@@ -34,10 +34,10 @@ first index.
 CyclicArrayMap
 ===
 
-``` js
 CyclicArrayMap behaves like a cyclic array of maps. Internally it's a map of
 arrays, which is much more efficient when the keys are dense. It behaves pretty much like CyclicArray. Space is allocated for each unique dimension encountered.
 
+``` js
 cam = new CyclicArrayMap(10);
 
 cam.insert(0, {x: 10, y: 5});
