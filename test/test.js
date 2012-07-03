@@ -179,6 +179,18 @@ describe("CyclicArray", function() {
       a.insert(12, "m");
       dead.should.eql([[0, 'c'], [3, 'f']]);
     });
+
+    it('slidePast', function() {
+      var a = new CyclicArray(3, 0);
+      var dead = [];
+      a.onRemove(function(i, x) { dead.push(i); });
+
+      a.insert(3, 3);
+      a.insert(4, 4);
+      a.insert(5, 5);
+      a.slidePast(4);
+      dead.should.eql([3,4]);
+    });
   });
 });
 

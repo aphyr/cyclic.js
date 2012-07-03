@@ -116,6 +116,11 @@ Cyclic.prototype.slide = function(target) {
   }
 };
 
+// Advances the cyclic to drop elements up to and including i.
+Cyclic.prototype.slidePast = function(i) {
+  this.slide(i + this.size); 
+}
+
 // Insert element x at the given index, advancing the window to include x if
 // necessary. If x falls *before* the Cyclic's window, ignores it.
 Cyclic.prototype.insert = function(i, x) {
