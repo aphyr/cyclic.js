@@ -29,6 +29,7 @@ function Cyclic(size, offset, scale) {
   }
 
   this.removeCallbacks = [];
+  this.ignoreCallbacks = [];
   this.init();
 }
 
@@ -69,10 +70,16 @@ Cyclic.prototype.set = function(i, x) {
   return this.setRaw(this.rawIndex(i), x);
 };
 
-// c.onRemove(function(x) { ... }) asks c to call the given function with
-// each element x as it is removed.
+// c.onRemove(function(index, element) { ... }) calls the given function every
+// time an element is removed from the window.
 Cyclic.prototype.onRemove = function(f) {
   this.removeCallbacks.push(f);
+};
+
+// c.onIgnore(function(index, element) { ... }) calls the given function every
+// time an element is inserted but ignored because it falls before the window.
+Cyclic.prototype.onIgnore = function(f) {
+  this.ignoreCallbacks.push(f);
 };
 
 // Append an element at the end of the Cyclic, advancing its window by 1.
@@ -116,7 +123,12 @@ Cyclic.prototype.insert = function(i, x) {
   try {
     this.set(i, x);
   } catch(e) { 
-    if (! e instanceof RangeError) {
+    if (e instanceof RangeError) {
+      // Ignore
+      _.each(this.ignoreCallbacks, function(callback) {
+        callback(i, x);
+      });
+    } else {
       throw e;
     }
   }

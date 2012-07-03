@@ -106,6 +106,16 @@ describe("CyclicArray", function() {
     a.get(10).should.equal("b");
   });
 
+  describe('ignore', function() {
+    var ignored = [];
+    var a = new CyclicArray(10, 3);
+    a.onIgnore(function(i,x) { ignored.push([i, x]) });
+    a.insert(1, 'a');
+    a.insert(2, 'b');
+    a.insert(3, 'c');
+    ignored.should.eql([[1, 'a'], [2, 'b']]);
+  });
+
   describe('scale', function() {
     it('indexes', function() {
       var a = new CyclicArray(10, -5, 2);
