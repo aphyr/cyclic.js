@@ -1,29 +1,53 @@
 // Cyclic
-function Cyclic(size) {
+// 
+// Create a cyclic array. 
+//
+// Size is the number of elements in the window.
+//
+// Offset is the (first/lowest/oldest) element's index.
+//
+// For time-series bucketing, scale is the number of indexes a given element
+// covers; indexes are divided by this factor, rounded towards -infinity.  If
+// your element indexes are, say, -10, 0, 10, 20, 30, ..., scale = 10 will
+// make those elements consecutive.
+function Cyclic(size, offset, scale) {
   if (! size > 0) {
     throw new RangeError("Size must be greater than 0");
   }
   this.size = size;
-  this.imin = 0;
-  this.removeCallbacks = [];
 
+  if (scale === undefined) {
+    this.scale = 1;
+  } else {
+    this.scale = scale;
+  }
+
+  if (offset === undefined) {
+    this.offset = 0;
+  } else {
+    this.offset = Math.floor(offset / this.scale);
+  }
+
+  this.removeCallbacks = [];
   this.init();
 }
 
 // The minimum index
 Cyclic.prototype.min = function() {
-  return this.imin;
+  return this.offset * this.scale;
 };
 
 // The maximum index
 Cyclic.prototype.max = function() {
-  return this.imin + this.size - 1;
+  return (this.offset + this.size - 1) * this.scale;
 };
 
 // Returns the index, in the underlying data structure, of the given virtual
 // index.
 Cyclic.prototype.rawIndex = function(i) {
-  var offset = i - this.imin;
+  i = Math.floor(i / this.scale);
+
+  var offset = i - this.offset;
   if (offset < 0 || offset >= this.size) {
     throw new RangeError("out of bounds");
   }
@@ -53,32 +77,35 @@ Cyclic.prototype.onRemove = function(f) {
 
 // Append an element at the end of the Cyclic, advancing its window by 1.
 Cyclic.prototype.append = function(x) {
-  var old = this.getRaw(this.imin % this.size);
+  var scale = this.scale; 
+  var old = this.getRaw(this.offset % this.size);
   if (old !== null) {
     _.each(this.removeCallbacks, function(callback) {
-      callback(this.imin, old);
+      callback(this.offset * scale, old);
     });
   }
 
-  this.set(this.imin, x);
-  this.imin++;
+  this.set(this.offset, x);
+  this.offset++;
   return x;
 };
 
 // Advances this cyclic such that its maximum element is at i,
 // calling remove callbacks with each removed element.
 Cyclic.prototype.slide = function(target) {
-  for (var i = this.imin; i <= (target - this.size); i++) {
+  var scale = this.scale;
+  var newOffset = Math.floor(target/this.scale) - this.size;
+  for (var i = this.offset; i <= newOffset; i++) {
     // Flush old value to callbacks
     var old = this.getRaw(i % this.size);
     if (old != null) {
       _.each(this.removeCallbacks, function(callback) {
-        callback(i, old);
+        callback(i * scale, old);
       });
     }
 
     this.removeRaw(i % this.size);
-    this.imin = i + 1;
+    this.offset = i + 1;
   }
 };
 

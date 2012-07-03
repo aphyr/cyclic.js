@@ -105,6 +105,71 @@ describe("CyclicArray", function() {
     a.get(9).should.equal("c");
     a.get(10).should.equal("b");
   });
+
+  describe('scale', function() {
+    it('indexes', function() {
+      var a = new CyclicArray(10, -5, 2);
+
+      // Verify that indexes are rounded/aligned properly.
+      a.rawIndex(-2.5).should.eql(-2);
+
+      a.rawIndex(-2).should.eql(-1);
+      a.rawIndex(-1.5).should.eql(-1);
+      a.rawIndex(-1).should.eql(-1);
+      a.rawIndex(-0.5).should.eql(-1);
+
+      a.rawIndex(0).should.eql(0);
+      a.rawIndex(0.5).should.eql(0);
+      a.rawIndex(1).should.eql(0);
+      a.rawIndex(1.5).should.eql(0);
+
+      a.rawIndex(2).should.eql(1);
+    });
+
+    it('inserts', function() {
+      var dead = [];
+      var a = new CyclicArray(3, 0, 3);
+      a.onRemove(function(x, y) { dead.push([x,y]) });
+
+      a.insert(0, "a");
+      a.get(0).should.eql("a");
+      a.insert(1, "b");
+      a.get(0).should.eql("b");
+      a.get(1).should.eql("b");
+      a.get(2).should.eql("b");
+
+      // Sequential writes
+      a.insert(2, "c");
+      a.insert(3, "d");
+      a.insert(4, "e");
+      a.insert(5, "f");
+      a.insert(6, "g");
+      a.insert(7, "h");
+      a.insert(8, "i");
+      a.insert(9, "j");
+      a.insert(10, "k");
+      a.insert(11, "l");
+
+      // 0-3 should be out of bounds
+      (function() { a.get(2) }).should.throw("out of bounds");
+      dead.should.eql([[0, 'c']]);
+
+      // Check that writes were partitioned
+      a.get(3).should.eql("f");
+      a.get(5).should.eql("f");
+      a.get(6).should.eql("i");
+      a.get(8).should.eql("i");
+      a.get(9).should.eql("l");
+      a.get(11).should.eql("l");
+      
+      // 12 should be out of bounds 
+      (function() { a.get(12) }).should.throw("out of bounds");
+
+      // One last insert, to confirm removed scaling
+      a.insert(12, "m");
+      dead.should.eql([[0, 'c'], [3, 'f']]);
+    });
+  });
 });
 
 describe("CyclicArrayMap", function() {
