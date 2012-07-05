@@ -256,4 +256,18 @@ describe("CyclicArrayMap", function() {
     dead.should.eql([[0, {}],
                     [1, {x: 1}]]); 
   });
+
+  it("cleans up empty dimensions", function() {
+    var a = new CyclicArrayMap(3);
+    a.insert(0, {x: 1, y:2, z: 3})
+    a.insert(3, {x: 4});
+   
+   // We should have garbage now
+    a.emptyDimensions().should.eql(['y', 'z']);
+    
+    // Inserting a new dimension should implicitly GC.
+    a.insert(4, {t: 5});
+    a.emptyDimensions().should.eql([]);
+    Object.keys(a.as).should.eql(['x', 't']);
+  });
 });

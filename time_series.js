@@ -74,7 +74,7 @@ Cyclic.prototype.get = function(i) {
 
 // Set an element at virtual index i
 Cyclic.prototype.set = function(i, x) {
-  var res = this.setRaw(this.rawIndex(i), x);
+  var res = this.setRaw(this.rawIndex(i), x, i);
   if (i > this.highWatermark) {
     this.highWatermark = i;
   }
@@ -209,6 +209,7 @@ CyclicArray.prototype.removeRaw = function(i, value) {
 // Cyclic Array Map /////////////////////////////////////////////////////////
 function CyclicArrayMap(size) {
   this.as = {};
+  this.highWatermarks = {};
   Cyclic.apply(this, arguments);
 }
 
@@ -229,13 +230,42 @@ CyclicArrayMap.prototype.arrayFor = function(dimension) {
     return a;
   }
 
+  this.gc();
+  
+  // Create a new array.
   a = new Array(this.size);
   for (var i = 0; i < this.size; i++) {
     a[i] = null;
   }
   this.as[dimension] = a;
+  this.highWatermarks[dimension] = -1/0;
   return a;
 };
+
+// Returns a list of dimensions in this CAM which have totally empty arrays.
+CyclicArrayMap.prototype.emptyDimensions = function() {
+  var empty = [];
+  var min = this.min();
+  var k;
+  for (k in this.as) {
+    if (this.highWatermarks[k] < min) {
+      empty.push(k);
+    }
+  }
+  return empty;
+}
+
+// Clean up unused arrays.
+CyclicArrayMap.prototype.gc = function() {
+  var empty = this.emptyDimensions();
+  var k;
+  var i;
+  for (i = 0; i < empty.length; i++) {
+    k = empty[i];
+    delete this.as[k];
+    delete this.highWatermarks[k];
+  }
+}
 
 CyclicArrayMap.prototype.getRaw = function(i) {
   var x = {};
@@ -257,10 +287,13 @@ CyclicArrayMap.prototype.removeRaw = function(i, x) {
   }
 };
 
-CyclicArrayMap.prototype.setRaw = function(i, x) {
+CyclicArrayMap.prototype.setRaw = function(i, x, virtualI) {
   var dimension;
   for (dimension in x) {
     this.arrayFor(dimension)[i] = x[dimension];
+    if (virtualI > this.highWatermarks[dimension]) {
+      this.highWatermarks[dimension] = virtualI;
+    }
   }
   return x;
 };
