@@ -191,6 +191,30 @@ describe("CyclicArray", function() {
       a.slidePast(4);
       dead.should.eql([3,4]);
     });
+
+
+    it('isEmpty', function() {
+      var a = new CyclicArray(10, 0, 10);
+      a.isEmpty().should.eql(true);
+      console.log();
+      a.insert(0, true);
+      a.isEmpty().should.eql(false);
+
+      // isEmpty is allowed to return false even when empty.
+      a.remove(0);
+      a.isEmpty().should.eql(false);
+
+      // Slide, on the other hand, *will* trigger empty.
+      a.insert(0, true);
+      a.slide(100, true);
+      a.isEmpty().should.eql(true);
+    });
+
+    it('slide quickly when empty', function() {
+      var a = new CyclicArray(10);
+      a.insert(1000000000, true);
+      a.get(1000000000).should.eql(true);
+    });
   });
 });
 

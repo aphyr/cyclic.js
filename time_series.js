@@ -30,6 +30,7 @@ function Cyclic(size, offset, scale) {
 
   this.removeCallbacks = [];
   this.ignoreCallbacks = [];
+  this.highWatermark = -1/0;
   this.init();
 }
 
@@ -41,6 +42,12 @@ Cyclic.prototype.min = function() {
 // The maximum index
 Cyclic.prototype.max = function() {
   return (this.offset + this.size - 1) * this.scale;
+};
+
+// Is there any data in this Cyclic? If true, definitely empty. If false,
+// *might* be empty.
+Cyclic.prototype.isEmpty = function() {
+  return(this.highWatermark < this.min());
 };
 
 // Returns the index, in the underlying data structure, of the given virtual
@@ -58,7 +65,7 @@ Cyclic.prototype.rawIndex = function(i) {
 // Returns the virtual index of the given physical index
 Cyclic.prototype.virtualIndex = function(i) {
   // TODO
-}
+};
 
 // Get an element at virtual index i
 Cyclic.prototype.get = function(i) {
@@ -67,7 +74,24 @@ Cyclic.prototype.get = function(i) {
 
 // Set an element at virtual index i
 Cyclic.prototype.set = function(i, x) {
-  return this.setRaw(this.rawIndex(i), x);
+  var res = this.setRaw(this.rawIndex(i), x);
+  if (i > this.highWatermark) {
+    this.highWatermark = i;
+  }
+  return res;
+};
+
+// Remove an element at virtual index i
+Cyclic.prototype.remove = function(i) {
+  var old = this.getRaw(this.rawIndex(i));
+
+  if (null !== old) {
+    _.each(this.removeCallbacks, function(callback) {
+      callback(i, old);
+    });
+  }
+
+  return this.removeRaw(this.rawIndex(i));
 };
 
 // c.onRemove(function(index, element) { ... }) calls the given function every
@@ -102,10 +126,17 @@ Cyclic.prototype.append = function(x) {
 Cyclic.prototype.slide = function(target) {
   var scale = this.scale;
   var newOffset = Math.floor(target/this.scale) - this.size;
+  // Go through and flush old data. 
   for (var i = this.offset; i <= newOffset; i++) {
+    if (this.isEmpty()) {
+      // Shortcut; we can just flip our virtual index.
+      this.offset = newOffset + 1;
+      return;
+    }
+ 
     // Flush old value to callbacks
     var old = this.getRaw(i % this.size);
-    if (old != null) {
+    if (old !== null) {
       _.each(this.removeCallbacks, function(callback) {
         callback(i * scale, old);
       });
@@ -119,20 +150,22 @@ Cyclic.prototype.slide = function(target) {
 // Advances the cyclic to drop elements up to and including i.
 Cyclic.prototype.slidePast = function(i) {
   this.slide(i + this.size); 
-}
+};
 
 // Insert element x at the given index, advancing the window to include x if
-// necessary. If x falls *before* the Cyclic's window, ignores it.
+// necessary. If x falls *before* the Cyclic's window, ignores it. Returns true if inserted, false otherwise.
 Cyclic.prototype.insert = function(i, x) {
   this.slide(i);
   try {
     this.set(i, x);
+    return true;
   } catch(e) { 
     if (e instanceof RangeError) {
       // Ignore
       _.each(this.ignoreCallbacks, function(callback) {
         callback(i, x);
       });
+      return false;
     } else {
       throw e;
     }
@@ -210,7 +243,7 @@ CyclicArrayMap.prototype.getRaw = function(i) {
   var dimension;
   for (dimension in this.as) {
     val = this.as[dimension][i];
-    if (val != null) {
+    if (val !== null) {
       x[dimension] = val;
     }
   }
